@@ -1,0 +1,24 @@
+name: 카드 자동 갱신
+on:
+  push:
+    branches: [main, master]
+    paths: ['*.png', 'db/classsum.txt', 'tools/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, '[auto]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - run: python tools/render_og.py
+      - run: python tools/bump.py "$(date +%m%d%H%M)"
+      - run: |
+          git config user.name "card-bot"
+          git config user.email "card-bot@users.noreply.github.com"
+          git add -A og c db/cardver.txt
+          git diff --cached --quiet || git commit -m "[auto] 카드 미리보기·버전 갱신"
+          git push
